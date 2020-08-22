@@ -11,12 +11,22 @@ jobs:
     name: Create Release
     runs-on: 'ubuntu-latest'
     steps:
+      - name: SetupGo
+        uses: actions/setup-go@v2
       - name: Setup
         run: |
           : "${tag:=${GITHUB_REF#refs/tags/}}"
           cat <<.
           ::set-env name=CLAIR_VERSION::${tag}
           .
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: ChangeLog
+        run: |
+          pwd
+          go build -o git-chglog github.com/git-chglog/git-chglog && chmod u+x ./git-chglog
+          chglog=`./git-chglog ${{ github.ref }}` 
+          echo "::set-env name=CHANGELOG::${chglog}"
       - name: Create Release
         uses: actions/create-release@latest
         env:
@@ -24,8 +34,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: ${{ env.CLAIR_VERSION}} Release
-          body: |
-            Coming Soon...
+          body: ${{ env.CHANGELOG }}
           draft: true
           prerelease: ${{ contains(env.CLAIR_VERSION, 'alpha') || contains(env.CLAIR_VERSION, 'beta') || contains(env.CLAIR_VERSION, 'rc') }}
   stable:
